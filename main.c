@@ -21,6 +21,8 @@
 // gyro_scale is +/- 1000 deg/s, 1000 / (57.3 * 32767), unit is radian
 #define GYRO_TO_RADIAN 0.000532609
 
+#define LogDataToFile
+
 static uint64_t GetCurrentTimeMilliSec();
 static int8_t user_i2c_read(uint8_t dev_addr, uint8_t reg_addr, uint8_t *data,
                             uint16_t len);
@@ -74,6 +76,18 @@ int main(int argc, char **argv) {
   struct bmi160_sensor_data accel;
   struct bmi160_sensor_data gyro;
 
+
+  // open file
+#ifdef LogDataToFile
+  // write to /tmp directory will be much faster!
+  FILE * log_file = fopen("/tmp/imu.csv", "w");
+  if(log_file == NULL) {
+    printf("open log file error!\n");
+    goto error;
+  }
+#endif
+
+
   while (!is_exit) {
 
     uint64_t start = GetCurrentTimeMilliSec();
@@ -99,8 +113,9 @@ int main(int argc, char **argv) {
         accelX, accelY, accelZ, gyroX, gyroY, gyroZ);
 
 
-    // thread save imu.csv
-    // TODO save imu.csv
+#ifdef LogDataToFile
+    fprintf(log_file, "%ld %f %f %f %ld %f %f %f\n",timestamp, accelX, accelY,accelZ, timestamp, gyroX, gyroY, gyroZ);
+#endif
 
     uint64_t used_time = GetCurrentTimeMilliSec() - start;
     const static int period = 5; // period 5ms, 200Hz
@@ -108,6 +123,14 @@ int main(int argc, char **argv) {
       usleep((__useconds_t) ((period - used_time) * 1000));
     }
 
+    error:
+#ifdef LogDataToFile
+    if(log_file!=NULL) {
+      fclose(log_file);
+    }
+#endif
+    // close I2C device
+    // release any other things
   }
 }
 
