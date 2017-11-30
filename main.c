@@ -7,6 +7,8 @@
 #include <time.h>
 #include <stdbool.h>
 #include <signal.h>
+#include <zconf.h>
+#include <linux/i2c-dev.h>
 #include "bmi160.h"
 
 // accel_scale is +/- 4g, 4 * 9.8 / 32767, unit is m/s^2
@@ -72,6 +74,7 @@ are set with default values, found in the datasheet of the sensor */
   struct bmi160_sensor_data gyro;
 
   while (!is_exit) {
+    uint64_t start = GetCurrentTimeMilliSec();
 /* To read both Accel and Gyro data along with time*/
     rslt = bmi160_get_sensor_data((BMI160_ACCEL_SEL | BMI160_GYRO_SEL | BMI160_TIME_SEL), &accel, &gyro, &sensor);
     if (rslt != BMI160_OK) {
@@ -86,6 +89,15 @@ are set with default values, found in the datasheet of the sensor */
     const double gyroX = gyro.x * GYRO_TO_RADIAN;
     const double gyroY = gyro.y * GYRO_TO_RADIAN;
     const double gyroZ = gyro.z * GYRO_TO_RADIAN;
+
+    // thread save imu.csv
+    // TODO save imu.csv
+
+    uint64_t used_time = GetCurrentTimeMilliSec() - start;
+    const static int period = 5; // period 5ms, 200Hz
+    if(used_time < period){
+      usleep((__useconds_t) ((period - used_time) * 1000));
+    }
   }
 }
 
