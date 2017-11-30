@@ -8,3 +8,4 @@ set(SOURCE_FILES
         main.c)
 
 add_executable(bmi160_demo ${SOURCE_FILES})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})

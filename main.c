@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include <signal.h>
 #include <zconf.h>
-#include <linux/i2c-dev.h>
+#include <i2c-dev.h>
 
 #include "bmi160.h"
 
@@ -30,7 +30,24 @@ static void user_delay_ms(uint32_t period);
 
 static bool is_exit = false;
 static void exit_handler(int s) { is_exit = true; }
+int file;
+void enableIMU()
+{
 
+  __u16 block[I2C_SMBUS_BLOCK_MAX];
+
+  int res, bus,  size;
+
+
+  char filename[20];
+  sprintf(filename, "/dev/i2c-%d", 1);
+  file = open(filename, O_RDWR);
+  if (file<0) {
+    printf("Unable to open I2C bus!");
+    exit(1);
+  }
+
+}
 int main(int argc, char **argv) {
   // install SIGNAL handler
   signal(SIGINT, exit_handler);
@@ -124,10 +141,50 @@ static uint64_t GetCurrentTimeMilliSec() {
       (uint64_t)((uint64_t)t.tv_nsec / 1000000 + (((uint64_t)t.tv_sec) * 1000));
   return cur_milli_sec;
 }
+void selectDevice(int file, int addr)
+{
+  char device[3];
+  if (addr == 1)
+    device == "L3G";
+  else
+    device == "LSM";
+
+
+  if (ioctl(file, I2C_SLAVE, addr) < 0) {
+    fprintf(stderr,
+            "Error: Could not select device  0x%02x: \n",
+            device);
+  }
+}
+void  readBlock(uint8_t command, uint8_t size, uint8_t *data)
+{
+  int result = i2c_smbus_read_i2c_block_data(file, command, size, data);
+  if (result != size)
+  {
+    printf("Failed to read block from I2C.");
+    exit(1);
+  }
+}
+void readMAG(int  *m)
+{
+#define MAG_ADDRESS            (0x3C >> 1)
+  uint8_t block[6];
+  selectDevice(file,MAG_ADDRESS);
+#define LSM303_OUT_X_H_M         0x03
+  // DLHC: register address order is X,Z,Y with high bytes first
+  readBlock(0x80 | LSM303_OUT_X_H_M, sizeof(block), block);
+
+  *m = (int16_t)(block[1] | block[0] << 8);
+  *(m+1) = (int16_t)(block[5] | block[4] << 8) ;
+  *(m+2) = (int16_t)(block[3] | block[2] << 8) ;
+}
 
 static int8_t user_i2c_read(uint8_t dev_addr, uint8_t reg_addr, uint8_t *data,
                             uint16_t len) {
   // TODO implement, use wiringPi
+  int *Pmag_raw;
+  readMAG(Pmag_raw);
+
 }
 static int8_t user_i2c_write(uint8_t dev_addr, uint8_t reg_addr, uint8_t *data,
                              uint16_t len) {
